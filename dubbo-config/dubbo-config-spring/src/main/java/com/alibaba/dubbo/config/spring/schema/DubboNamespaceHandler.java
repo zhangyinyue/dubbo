@@ -40,7 +40,7 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport {
     static {
         Version.checkDuplicate(DubboNamespaceHandler.class);
     }
-
+    /*对这DubboBeanDefinitionParser进行拆分*/
     public void init() {
         registerBeanDefinitionParser("application", new DubboBeanDefinitionParser(ApplicationConfig.class, true));
         registerBeanDefinitionParser("module", new DubboBeanDefinitionParser(ModuleConfig.class, true));
