@@ -496,13 +496,17 @@ public class ExtensionLoader<T> {
             throw findException(name);
         }
         try {
+            //加入实例缓存中
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, (T) clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            //对实例进行属性依赖注入
             injectExtension(instance);
+            //cachedWrapperClasses在loadFile中会赋值
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
+            //构建包装类，并依赖注入，包装类A,B，B包装type值对应的类，A包装B
             if (wrapperClasses != null && wrapperClasses.size() > 0) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
@@ -519,12 +523,17 @@ public class ExtensionLoader<T> {
         try {
             if (objectFactory != null) {
                 for (Method method : instance.getClass().getMethods()) {
+                    //以set开头的方法，利用该方法对实例属性进行赋值
                     if (method.getName().startsWith("set")
                             && method.getParameterTypes().length == 1
                             && Modifier.isPublic(method.getModifiers())) {
                         Class<?> pt = method.getParameterTypes()[0];
                         try {
                             String property = method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
+                            //objectFactory主要有两个SpiExtensionFactory和SpringExtensionFactory，
+                            //获取方法参数需要的类型的实例，调用set方法进行赋值
+                            //SpiExtensionFactory识别pt，也就是类型
+                            //SpringExtensionFactory识别property，也就是名称
                             Object object = objectFactory.getExtension(pt, property);
                             if (object != null) {
                                 method.invoke(instance, object);
@@ -569,8 +578,10 @@ public class ExtensionLoader<T> {
 
     // 此方法已经getExtensionClasses方法同步过。
     private Map<String, Class<?>> loadExtensionClasses() {
+        //type是否有SPI注解
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {
+            //SPI注解value值为默认的extension,并且只能有一个
             String value = defaultAnnotation.value();
             if (value != null && (value = value.trim()).length() > 0) {
                 String[] names = NAME_SEPARATOR.split(value);
@@ -583,6 +594,7 @@ public class ExtensionLoader<T> {
         }
 
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
+        //分别加载META-INF/services/、META-INF/dubbo/、META-INF/dubbo/internal/三个目录下的spi
         loadFile(extensionClasses, DUBBO_INTERNAL_DIRECTORY);
         loadFile(extensionClasses, DUBBO_DIRECTORY);
         loadFile(extensionClasses, SERVICES_DIRECTORY);
@@ -590,8 +602,10 @@ public class ExtensionLoader<T> {
     }
 
     private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
+        //获取文件名
         String fileName = dir + type.getName();
         try {
+            //获取文件路径
             Enumeration<java.net.URL> urls;
             ClassLoader classLoader = findClassLoader();
             if (classLoader != null) {
@@ -603,16 +617,19 @@ public class ExtensionLoader<T> {
                 while (urls.hasMoreElements()) {
                     java.net.URL url = urls.nextElement();
                     try {
+                        //读取每一个文件
                         BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream(), "utf-8"));
                         try {
                             String line = null;
                             while ((line = reader.readLine()) != null) {
+                                //忽略配置文件里的#号
                                 final int ci = line.indexOf('#');
                                 if (ci >= 0) line = line.substring(0, ci);
                                 line = line.trim();
                                 if (line.length() > 0) {
                                     try {
                                         String name = null;
+                                        //按=号进行切割，前部分为名称，后部分为类全路径名
                                         int i = line.indexOf('=');
                                         if (i > 0) {
                                             name = line.substring(0, i).trim();
@@ -620,11 +637,13 @@ public class ExtensionLoader<T> {
                                         }
                                         if (line.length() > 0) {
                                             Class<?> clazz = Class.forName(line, true, classLoader);
+                                            //是否和type是同一个接口或是同一个类的子类
                                             if (!type.isAssignableFrom(clazz)) {
                                                 throw new IllegalStateException("Error when load extension class(interface: " +
                                                         type + ", class line: " + clazz.getName() + "), class "
                                                         + clazz.getName() + "is not subtype of interface.");
                                             }
+                                            //类有Adaptive注解，就是在getAdaptiveExtensionClass方法要返回的类
                                             if (clazz.isAnnotationPresent(Adaptive.class)) {
                                                 if (cachedAdaptiveClass == null) {
                                                     cachedAdaptiveClass = clazz;
@@ -635,6 +654,7 @@ public class ExtensionLoader<T> {
                                                 }
                                             } else {
                                                 try {
+                                                    //类是否为包装类，也就是有以type为参数的构造函数
                                                     clazz.getConstructor(type);
                                                     Set<Class<?>> wrappers = cachedWrapperClasses;
                                                     if (wrappers == null) {
@@ -643,8 +663,10 @@ public class ExtensionLoader<T> {
                                                     }
                                                     wrappers.add(clazz);
                                                 } catch (NoSuchMethodException e) {
+                                                    //没有以type为参数的构造函数
                                                     clazz.getConstructor();
                                                     if (name == null || name.length() == 0) {
+                                                        //兼容旧版本的Extension注解
                                                         name = findAnnotationName(clazz);
                                                         if (name == null || name.length() == 0) {
                                                             if (clazz.getSimpleName().length() > type.getSimpleName().length()
@@ -657,6 +679,7 @@ public class ExtensionLoader<T> {
                                                     }
                                                     String[] names = NAME_SEPARATOR.split(name);
                                                     if (names != null && names.length > 0) {
+                                                        //类是否有Activate注解，用在getActiveExtension中
                                                         Activate activate = clazz.getAnnotation(Activate.class);
                                                         if (activate != null) {
                                                             cachedActivates.put(names[0], activate);
