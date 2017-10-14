@@ -87,6 +87,9 @@ public final class URL implements Serializable {
 
     private final Map<String, String> parameters;
 
+    //这些属性是volatile，说明在多线程下，
+    // 每个属性的值对各个工作内存都是可见的，也就是最新的
+    // 也是transient，说明url对象作序列化时，这些属性不会参与进序列化
     // ==== cache ====
 
     private volatile transient Map<String, Number> numbers;

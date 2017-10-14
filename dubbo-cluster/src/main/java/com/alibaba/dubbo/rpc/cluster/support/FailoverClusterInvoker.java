@@ -70,10 +70,12 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 //重新检查一下
                 checkInvokers(copyinvokers, invocation);
             }
+            //使用loadbalance负载均衡选择哪个服务invoker去调用
             Invoker<T> invoker = select(loadbalance, invocation, copyinvokers, invoked);
             invoked.add(invoker);
             RpcContext.getContext().setInvokers((List) invoked);
             try {
+                //调用执行调用链
                 Result result = invoker.invoke(invocation);
                 if (le != null && logger.isWarnEnabled()) {
                     logger.warn("Although retry the method " + invocation.getMethodName()

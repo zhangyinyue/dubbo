@@ -73,10 +73,12 @@ public class NettyClient extends AbstractClient {
         final NettyHandler nettyHandler = new NettyHandler(getUrl(), this);
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
             public ChannelPipeline getPipeline() {
+                //使用适配，用DubboCodec去编码解码
                 NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyClient.this);
                 ChannelPipeline pipeline = Channels.pipeline();
                 pipeline.addLast("decoder", adapter.getDecoder());
                 pipeline.addLast("encoder", adapter.getEncoder());
+                //工作线程的处理handler
                 pipeline.addLast("handler", nettyHandler);
                 return pipeline;
             }
