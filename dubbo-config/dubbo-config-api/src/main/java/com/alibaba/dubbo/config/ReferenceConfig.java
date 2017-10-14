@@ -376,6 +376,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
 
             if (urls.size() == 1) {
+                //会调用DubboProtocol.refer去获取DubboInvoker
                 invoker = refprotocol.refer(interfaceClass, urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
@@ -409,6 +410,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         if (logger.isInfoEnabled()) {
             logger.info("Refer dubbo service " + interfaceClass.getName() + " from url " + invoker.getUrl());
         }
+        //使用JavassistProxyFactory去创建
         // 创建服务代理
         return (T) proxyFactory.getProxy(invoker);
     }

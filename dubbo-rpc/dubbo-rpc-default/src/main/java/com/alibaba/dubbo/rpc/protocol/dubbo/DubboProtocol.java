@@ -75,6 +75,7 @@ public class DubboProtocol extends AbstractProtocol {
         public Object reply(ExchangeChannel channel, Object message) throws RemotingException {
             if (message instanceof Invocation) {
                 Invocation inv = (Invocation) message;
+                //从DubboExporter里获取Invoker
                 Invoker<?> invoker = getInvoker(channel, inv);
                 //如果是callback 需要处理高版本调用低版本的问题
                 if (Boolean.TRUE.toString().equals(inv.getAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
@@ -97,6 +98,7 @@ public class DubboProtocol extends AbstractProtocol {
                     }
                 }
                 RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+                //反射调用，真正客户端方法调用的地方
                 return invoker.invoke(inv);
             }
             throw new RemotingException(channel, "Unsupported request: " + message == null ? null : (message.getClass().getName() + ": " + message) + ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress());
@@ -222,6 +224,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         // export service.
         String key = serviceKey(url);
+        //封装为一个DubboExporter
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
 
@@ -240,6 +243,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        //网络通讯的入口，会去默认用netty创建
         openServer(url);
 
         return exporter;
@@ -274,6 +278,8 @@ public class DubboProtocol extends AbstractProtocol {
         url = url.addParameter(Constants.CODEC_KEY, Version.isCompatibleVersion() ? COMPATIBLE_CODEC_NAME : DubboCodec.NAME);
         ExchangeServer server;
         try {
+            //通过spi机制，真正使用HeaderExchanger去bind,这里可以看一下requestHandler，
+            // 这个就是之后客户端refer真正处理的地方
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);
@@ -344,6 +350,7 @@ public class DubboProtocol extends AbstractProtocol {
      */
     private ExchangeClient initClient(URL url) {
 
+        //设置一些参数，比如心跳机制等
         // client type setting.
         String str = url.getParameter(Constants.CLIENT_KEY, url.getParameter(Constants.SERVER_KEY, Constants.DEFAULT_REMOTING_CLIENT));
 
@@ -365,6 +372,7 @@ public class DubboProtocol extends AbstractProtocol {
             if (url.getParameter(Constants.LAZY_CONNECT_KEY, false)) {
                 client = new LazyConnectExchangeClient(url, requestHandler);
             } else {
+                //跟服务发布相对，具体调用HeaderExchanger.connect
                 client = Exchangers.connect(url, requestHandler);
             }
         } catch (RemotingException e) {

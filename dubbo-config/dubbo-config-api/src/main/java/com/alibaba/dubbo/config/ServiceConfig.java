@@ -513,6 +513,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if ((contextPath == null || contextPath.length() == 0) && provider != null) {
             contextPath = provider.getContextpath();
         }
+        //前面将各种配置信息都封装进map中，然后构建url对象
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
 
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
@@ -521,12 +522,19 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
 
+        //这里就是暴露服务的入口
         String scope = url.getParameter(Constants.SCOPE_KEY);
         //配置为none不暴露
         if (!Constants.SCOPE_NONE.toString().equalsIgnoreCase(scope)) {
 
             //配置不是remote的情况下做本地暴露 (配置为remote，则表示只暴露远程服务)
             if (!Constants.SCOPE_REMOTE.toString().equalsIgnoreCase(scope)) {
+                //方法里的url是如下形式：
+                //injvm://127.0.0.1/com.zyy.service.inter.OrderLogService?anyhost=true&application=order-basic
+                // &dubbo=2.5.5&generic=false&interface=com.zyy.service.inter.OrderLogService
+                // &methods=queryOrderLogs,update,insert&pid=9304&side=provider&timestamp=1507951011792&validation=true
+                //表示的意思大概是：injvm 表示本地暴露， 访问地址是127.0.0.1， 访问路径是com.zyy.service.inter.OrderLogService
+                //接下来是参数信息，存在URL的parameters的属性里
                 exportLocal(url);
             }
             //如果配置不是local则暴露为远程服务.(配置为local，则表示只暴露本地服务)
@@ -545,8 +553,18 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         if (logger.isInfoEnabled()) {
                             logger.info("Register dubbo service " + interfaceClass.getName() + " url " + url + " to registry " + registryURL);
                         }
+                        //registryURL的值示例如下：
+                        //registry://127.0.0.1:2181/com.alibaba.dubbo.registry.RegistryService?application=order-basic&dubbo=2.5.5
+                        // &pid=9304&registry=zookeeper&timestamp=1507951010581
+                        //这里的url表示意思如下： registry 表示当前的url是用来注册的； 访问地址是127.0.0.1 端口号是2181； 访问路径是com.alibaba.dubbo.registry.RegistryService
+                        //application=order-basic 应用名是：order-basic 等的信息存在url的parameters属性里
+                        //这里的proxyFactory.getInvoker使用的是JavassistProxyFactory.getInvoker方法，
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
-
+                        //这里的protocol具体使用的是哪个，它的判断过程是：
+                        // com.alibaba.dubbo.common.URL url = arg0.getUrl();
+                        // String extName = (url.getProtocol() == null ? "dubbo" : url.getProtocol());
+                        // 再根据 extName 获取相应的spi类
+                        //如上讲的，invoker里面会存有一个url，这个url的协议是registry, 所以protocol具体的类是RegistryProtocol
                         Exporter<?> exporter = protocol.export(invoker);
                         exporters.add(exporter);
                     }
