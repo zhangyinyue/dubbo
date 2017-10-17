@@ -43,7 +43,12 @@ import java.util.Map;
 
 /**
  * ServiceFactoryBean
- *
+ * ServiceBean实现了ApplicationContextAware、BeanNameAware接口，在springioc的过程中，
+ * 会对applicationContext、beanName调用相应的set方法进行依赖注入赋值。
+ * 实现InitializingBean、DisposableBean，就是在spring容器初始化对象和销毁对象时，做一些自定义的操作。
+ * 而实现了ApplicationListener，则是接当前类做为一个事件监听器，在spring发布一个事件时，能做相应的处理。
+ * 在setApplicationContext里有把这个监听器注册到spring中的操作。
+ * 这样，ServiceBean就具体自定义初始化、销毁、设置applicationContext、beanName值和ApplicationListener事件监听的功能。
  * @author william.liangf
  * @export
  */
@@ -77,12 +82,14 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         if (applicationContext != null) {
             SPRING_CONTEXT = applicationContext;
             try {
+                //在这里注册监听到applicationContext中
                 Method method = applicationContext.getClass().getMethod("addApplicationListener", new Class<?>[]{ApplicationListener.class}); // 兼容Spring2.0.1
                 method.invoke(applicationContext, new Object[]{this});
                 supportedApplicationListener = true;
             } catch (Throwable t) {
                 if (applicationContext instanceof AbstractApplicationContext) {
                     try {
+                        //在这里注册监听到applicationContext中
                         Method method = AbstractApplicationContext.class.getDeclaredMethod("addListener", new Class<?>[]{ApplicationListener.class}); // 兼容Spring2.0.1
                         if (!method.isAccessible()) {
                             method.setAccessible(true);
@@ -106,6 +113,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 if (logger.isInfoEnabled()) {
                     logger.info("The service ready on spring started. service: " + getInterface());
                 }
+                //dubbo服务暴露的入口
                 export();
             }
         }
@@ -247,6 +255,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
             }
         }
         if (!isDelay()) {
+            //dubbo服务暴露的入口
             export();
         }
     }

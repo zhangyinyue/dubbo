@@ -53,7 +53,9 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * AnnotationBean
- *
+ * AnnotationBean实现了DisposableBean接口，在销毁对象时，对服务进行反暴露，对引用进行销毁；实现了ApplicationContextAware，
+ * 能设置applicationContext的值；实现了BeanFactoryPostProcessor接口，可以修改bean的配置信息；
+ * 而实现了BeanPostProcessor接口，能在初始化bean时增加前后置操作。
  * @author william.liangf
  * @export
  */
@@ -187,6 +189,7 @@ public class AnnotationBean extends AbstractConfig implements DisposableBean, Be
                 }
             }
             serviceConfigs.add(serviceConfig);
+            //暴露dubbo服务入口
             serviceConfig.export();
         }
         return bean;
@@ -207,6 +210,7 @@ public class AnnotationBean extends AbstractConfig implements DisposableBean, Be
                 try {
                     Reference reference = method.getAnnotation(Reference.class);
                     if (reference != null) {
+                        //dubbo引用服务入口，处理在set方法上面@Reference的注解
                         Object value = refer(reference, method.getParameterTypes()[0]);
                         if (value != null) {
                             method.invoke(bean, new Object[]{value});
@@ -225,6 +229,7 @@ public class AnnotationBean extends AbstractConfig implements DisposableBean, Be
                 }
                 Reference reference = field.getAnnotation(Reference.class);
                 if (reference != null) {
+                    //dubbo引用服务入口，处理类成员变量上的@Reference注解
                     Object value = refer(reference, field.getType());
                     if (value != null) {
                         field.set(bean, value);
