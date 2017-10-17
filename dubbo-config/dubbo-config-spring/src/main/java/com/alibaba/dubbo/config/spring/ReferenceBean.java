@@ -38,7 +38,10 @@ import java.util.Map;
 
 /**
  * ReferenceFactoryBean
- *
+ * ReferenceBean实现了ApplicationContextAware, InitializingBean, DisposableBean这三个接口，
+ * 也就是有设置applicationContext值、自定义初始化、销毁的功能。
+ * 其中，实现FactoryBean，因为实例化该bean过程比较复杂，通过实现该接口定制实例化bean的逻辑。
+ * 也就是，这里的getObject方法，是dubbo方法引用的入口。
  * @author william.liangf
  * @export
  */
@@ -62,6 +65,7 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
     }
 
     public Object getObject() throws Exception {
+        //dubbo引用服务的入口，调用ReferenceConfig的get()方法
         return get();
     }
 
@@ -169,6 +173,7 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
             b = getConsumer().isInit();
         }
         if (b != null && b.booleanValue()) {
+            //dubbo引用服务的入口
             getObject();
         }
     }
