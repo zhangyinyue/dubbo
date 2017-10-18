@@ -128,6 +128,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         if (destroyed.get()){
             return;
         }
+        //这里调用父类方法，把url加入registered中
         super.register(url);
         failedRegistered.remove(url);
         failedUnregistered.remove(url);
@@ -317,6 +318,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     // 重试失败的动作
     protected void retry() {
+        //对失败的注册动作进行重试直至成功
         if (!failedRegistered.isEmpty()) {
             Set<URL> failed = new HashSet<URL>(failedRegistered);
             if (failed.size() > 0) {
@@ -337,6 +339,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 }
             }
         }
+        //对失败的反注册动作进行重试直至成功
         if (!failedUnregistered.isEmpty()) {
             Set<URL> failed = new HashSet<URL>(failedUnregistered);
             if (failed.size() > 0) {
@@ -357,6 +360,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 }
             }
         }
+        //对失败的订阅动作进行重试直至成功
         if (!failedSubscribed.isEmpty()) {
             Map<URL, Set<NotifyListener>> failed = new HashMap<URL, Set<NotifyListener>>(failedSubscribed);
             for (Map.Entry<URL, Set<NotifyListener>> entry : new HashMap<URL, Set<NotifyListener>>(failed).entrySet()) {
@@ -386,6 +390,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 }
             }
         }
+        //对失败的反订阅动作进行重试直至成功
         if (!failedUnsubscribed.isEmpty()) {
             Map<URL, Set<NotifyListener>> failed = new HashMap<URL, Set<NotifyListener>>(failedUnsubscribed);
             for (Map.Entry<URL, Set<NotifyListener>> entry : new HashMap<URL, Set<NotifyListener>>(failed).entrySet()) {
@@ -415,6 +420,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 }
             }
         }
+        //对失败的通知进行重试，直至成功
         if (!failedNotified.isEmpty()) {
             Map<URL, Map<NotifyListener, List<URL>>> failed = new HashMap<URL, Map<NotifyListener, List<URL>>>(failedNotified);
             for (Map.Entry<URL, Map<NotifyListener, List<URL>>> entry : new HashMap<URL, Map<NotifyListener, List<URL>>>(failed).entrySet()) {
