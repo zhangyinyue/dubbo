@@ -130,6 +130,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         if (invokers.size() == 2 && selected != null && selected.size() > 0) {
             return selected.get(0) == invokers.get(0) ? invokers.get(1) : invokers.get(0);
         }
+        //真正调用负载策略处理的入口
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //如果 selected中包含（优先判断） 或者 不可用&&availablecheck=true 则重试.
@@ -217,8 +218,10 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         checkWhetherDestroyed();
 
         LoadBalance loadbalance;
-
+        //RegistryDirectory处理通知响应（notify）时，将注册中心最新的列表接取下来，存放在静态变量缓存中
+        //这里的invokers列表，调用directory.list(invocation)，从RegistryDirectory的methodInvokerMap中获取的
         List<Invoker<T>> invokers = list(invocation);
+        //通过SPI机制获取loadbalance
         if (invokers != null && invokers.size() > 0) {
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(invocation.getMethodName(), Constants.LOADBALANCE_KEY, Constants.DEFAULT_LOADBALANCE));
@@ -226,6 +229,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(Constants.DEFAULT_LOADBALANCE);
         }
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
+        //再到子类中具体处理调用过程
         return doInvoke(invocation, invokers, loadbalance);
     }
 
