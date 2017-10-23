@@ -54,6 +54,7 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        //使用NettyTransporter去bind
         return getTransporter().bind(url, handler);
     }
 
